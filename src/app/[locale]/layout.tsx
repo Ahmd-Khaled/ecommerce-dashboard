@@ -3,6 +3,7 @@ import { routing } from "@/i18n/routing";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
 interface LocaleLayoutProps {
   children: React.ReactNode;
@@ -25,15 +26,29 @@ export default async function LocaleLayout({
     notFound();
   }
 
-  const messages = await getMessages();
-
   const direction = locale === "ar" ? "rtl" : "ltr";
 
   return (
     <div lang={locale} dir={direction}>
-      <NextIntlClientProvider locale={locale} messages={messages}>
-        <Providers>{children}</Providers>
-      </NextIntlClientProvider>
+      <Suspense fallback={null}>
+        <LocaleProviders locale={locale}>{children}</LocaleProviders>
+      </Suspense>
     </div>
+  );
+}
+
+async function LocaleProviders({
+  children,
+  locale,
+}: {
+  children: React.ReactNode;
+  locale: string;
+}) {
+  const messages = await getMessages({ locale });
+
+  return (
+    <NextIntlClientProvider locale={locale} messages={messages}>
+      <Providers>{children}</Providers>
+    </NextIntlClientProvider>
   );
 }

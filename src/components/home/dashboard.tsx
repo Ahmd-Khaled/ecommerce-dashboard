@@ -17,7 +17,7 @@ export default function HomeDashboard() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isArabic = locale === "ar";
-  const currentYear = new Date().getFullYear();
+  const currentYear = 2026;
 
   return (
     <div
