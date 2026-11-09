@@ -13,9 +13,11 @@ import { StoreInsights } from "./store-insights";
 export default function HomeDashboard() {
   const locale = useLocale();
   const t = useTranslations("Home");
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isArabic = locale === "ar";
+  const currentYear = new Date().getFullYear();
 
   return (
     <div
@@ -46,7 +48,7 @@ export default function HomeDashboard() {
 
             <footer className="flex flex-col items-center justify-between gap-2 border-t border-slate-200/80 py-5 text-[10px] text-slate-400 sm:flex-row">
               <p>
-                © {new Date().getFullYear()} StoreFlow. {t("allRightsReserved")}
+                © {currentYear} StoreFlow. {t("allRightsReserved")}
               </p>
 
               <div className="flex items-center gap-4">
