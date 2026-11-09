@@ -19,7 +19,7 @@ api.interceptors.request.use((config) => {
   const token = getAdminAccessToken();
 
   if (token) {
-    config.headers.Authorization = `Admin ${token}`;
+    config.headers.Authorization = `admin ${token}`;
   }
 
   return config;
