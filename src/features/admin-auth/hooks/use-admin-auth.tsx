@@ -6,12 +6,14 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 
-import { useRouter } from "@/i18n/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { apiErrorMessage } from "@/lib/api/axios";
+import { setAdminSessionBootstrapInProgress } from "@/lib/api/axios";
 import {
   clearAdminAccessToken,
   setAdminAccessToken,
@@ -19,6 +21,7 @@ import {
 
 import { adminAuthApi } from "../api/admin-auth.api";
 import type { Admin, AdminLoginInput } from "../types/admin-auth.types";
+import { AdminRoleEnum } from "@/features/admin-management/types/admin.types";
 
 type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
@@ -46,6 +49,8 @@ const AdminAuthContext = createContext<AdminAuthContextValue | null>(null);
 
 export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const initialPathname = useRef(pathname);
 
   const [admin, setAdmin] = useState<Admin | null>(null);
   const [status, setStatus] = useState<AuthStatus>("loading");
@@ -130,6 +135,14 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     let active = true;
 
     const initializeSession = async () => {
+      // The login screen is public. Avoid repeatedly attempting an expired
+      // refresh cookie there; protected routes will still restore the session.
+      if (initialPathname.current === "/login") {
+        setStatus("unauthenticated");
+        return;
+      }
+
+      setAdminSessionBootstrapInProgress(true);
       try {
         await adminAuthApi.refresh();
         const currentAdmin = await adminAuthApi.profile();
@@ -142,6 +155,8 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
         if (!active) return;
 
         clearSession();
+      } finally {
+        setAdminSessionBootstrapInProgress(false);
       }
     };
 
@@ -154,6 +169,8 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const onSessionExpired = () => {
+      if (pathname === "/login") return;
+
       clearSession();
       router.replace("/login");
     };
@@ -163,14 +180,14 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     return () => {
       window.removeEventListener("admin-session-expired", onSessionExpired);
     };
-  }, [clearSession, router]);
+  }, [clearSession, pathname, router]);
 
   const value = useMemo<AdminAuthContextValue>(
     () => ({
       admin,
       status,
       isAuthenticated: status === "authenticated",
-      isSuperAdmin: admin?.role === "SUPER_ADMIN",
+      isSuperAdmin: admin?.role === AdminRoleEnum.SUPER_ADMIN,
       error,
       login,
       logout,

@@ -1,4 +1,6 @@
-export type AdminRole = "ADMIN" | "SUPER_ADMIN";
+import type { AdminRole } from "@/features/admin-management/types/admin.types";
+
+export type { AdminRole } from "@/features/admin-management/types/admin.types";
 
 export type AdminStatus = "active" | "frozen" | "deleted";
 

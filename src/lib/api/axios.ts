@@ -9,7 +9,7 @@ import {
   setAdminAccessToken,
 } from "./token-store";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_URL = "/api/v1";
 
 if (!API_URL) {
   throw new Error("NEXT_PUBLIC_API_URL is not configured");
@@ -18,6 +18,7 @@ if (!API_URL) {
 export const api = axios.create({
   baseURL: API_URL,
   withCredentials: true,
+  timeout: 15_000,
   headers: {
     Accept: "application/json",
   },
@@ -26,6 +27,7 @@ export const api = axios.create({
 const refreshClient = axios.create({
   baseURL: API_URL,
   withCredentials: true,
+  timeout: 15_000,
   headers: {
     Accept: "application/json",
     "Content-Type": "application/json",
@@ -45,6 +47,11 @@ type RetriableRequest = InternalAxiosRequestConfig & {
 };
 
 let refreshPromise: Promise<string> | null = null;
+let sessionBootstrapInProgress = false;
+
+export function setAdminSessionBootstrapInProgress(inProgress: boolean): void {
+  sessionBootstrapInProgress = inProgress;
+}
 
 export async function refreshAdminAccessToken(): Promise<string> {
   if (!refreshPromise) {
@@ -91,6 +98,7 @@ api.interceptors.response.use(
       error.response?.status !== 401 ||
       !originalRequest ||
       originalRequest._retry ||
+      sessionBootstrapInProgress ||
       originalRequest.url?.includes("/admin/auth/login") ||
       originalRequest.url?.includes("/admin/auth/refresh-token")
     ) {
