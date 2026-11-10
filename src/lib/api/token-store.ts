@@ -1,13 +1,13 @@
 let adminAccessToken: string | null = null;
 
-export function getAdminAccessToken() {
+export function getAdminAccessToken(): string | null {
   return adminAccessToken;
 }
 
-export function setAdminAccessToken(token: string | null) {
+export function setAdminAccessToken(token: string | null): void {
   adminAccessToken = token;
 }
 
-export function clearAdminAccessToken() {
+export function clearAdminAccessToken(): void {
   adminAccessToken = null;
 }
