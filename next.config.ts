@@ -5,6 +5,21 @@ import createNextIntlPlugin from "next-intl/plugin";
 const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
+  images: {
+    remotePatterns: [
+      {
+        protocol: "http",
+        hostname: "localhost",
+        port: "4000",
+        pathname: "/media/products/**",
+      },
+      {
+        protocol: "https",
+        hostname: "example.com",
+        pathname: "/images/**",
+      },
+    ],
+  },
 
   async rewrites() {
     const apiOrigin = process.env.NEXT_PUBLIC_API_URL;

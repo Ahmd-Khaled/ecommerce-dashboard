@@ -24,7 +24,9 @@ export default function RootLayout({
 }>) {
   return (
     <html suppressHydrationWarning>
-      <body className={alexandria.variable}>{children}</body>
+      <body className={alexandria.variable} suppressHydrationWarning>
+        {children}
+      </body>
     </html>
   );
 }

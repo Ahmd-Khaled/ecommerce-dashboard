@@ -8,6 +8,7 @@ import {
   Package,
   Tags,
   ShoppingCart,
+  CreditCard,
   Users,
   ShieldCheck,
   ChevronLeft,
@@ -55,6 +56,11 @@ export function DashboardSidebar() {
       icon: ShoppingCart,
     },
     {
+      label: isArabic ? "المدفوعات" : "Payments",
+      href: `/${locale}/payments`,
+      icon: CreditCard,
+    },
+    {
       label: isArabic ? "العملاء" : "Customers",
       href: `/${locale}/customers`,
       icon: Users,
@@ -80,7 +86,6 @@ export function DashboardSidebar() {
         collapsed ? "w-[76px]" : "w-64",
       ].join(" ")}
     >
-      {/* Brand */}
       <div className="flex h-16 items-center gap-3 border-b border-border px-4">
         <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
           <Package className="size-5" />
@@ -96,7 +101,6 @@ export function DashboardSidebar() {
         )}
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
         {!collapsed && (
           <p className="mb-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -119,14 +123,12 @@ export function DashboardSidebar() {
               ].join(" ")}
             >
               <Icon className="size-[18px] shrink-0" />
-
               {!collapsed && <span className="truncate">{item.label}</span>}
             </Link>
           );
         })}
       </nav>
 
-      {/* Collapse */}
       <div className="border-t border-border p-3">
         <button
           type="button"

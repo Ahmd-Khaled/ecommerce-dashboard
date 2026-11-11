@@ -86,6 +86,14 @@ api.interceptors.request.use((config) => {
     config.headers.set("Authorization", `admin ${token}`);
   }
 
+  // Let the browser/Axios generate the multipart boundary.
+  if (
+    typeof FormData !== "undefined" &&
+    config.data instanceof FormData
+  ) {
+    config.headers.delete("Content-Type");
+  }
+
   return config;
 });
 
