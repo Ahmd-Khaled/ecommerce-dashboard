@@ -2,6 +2,7 @@
 
 import { useLocale } from "next-intl";
 import { LogOut, Menu, Globe, ShieldCheck } from "lucide-react";
+import { usePathname, useRouter } from "@/i18n/navigation";
 
 import { useAdminAuth } from "@/features/admin-auth/hooks/use-admin-auth";
 import { AdminRoleEnum } from "@/features/admin-management/types/admin.types";
@@ -13,6 +14,8 @@ type DashboardHeaderProps = {
 export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
   const locale = useLocale();
   const isArabic = locale === "ar";
+  const pathname = usePathname();
+  const router = useRouter();
 
   const { admin, logout } = useAdminAuth();
 
@@ -49,12 +52,28 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
       </div>
 
       <div className="flex items-center gap-2 sm:gap-4">
-        <div className="hidden items-center gap-2 rounded-full border border-border px-3 py-1.5 sm:flex">
+        <button
+          type="button"
+          onClick={() =>
+            router.replace(pathname, { locale: isArabic ? "en" : "ar" })
+          }
+          className="flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-foreground transition-colors hover:bg-muted"
+          aria-label={
+            isArabic
+              ? "Switch language to English"
+              : "التبديل إلى اللغة العربية"
+          }
+          title={
+            isArabic
+              ? "Switch language to English"
+              : "التبديل إلى اللغة العربية"
+          }
+        >
           <Globe className="size-3.5 text-muted-foreground" />
           <span className="text-xs font-medium">
-            {isArabic ? "العربية" : "English"}
+            {isArabic ? "English" : "عربي"}
           </span>
-        </div>
+        </button>
 
         <div className="flex items-center gap-3">
           <div className="hidden text-end sm:block">

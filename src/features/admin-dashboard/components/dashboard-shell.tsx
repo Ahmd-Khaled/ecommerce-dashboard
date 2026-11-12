@@ -14,15 +14,18 @@ export function DashboardShell({ children }: DashboardShellProps) {
   const locale = useLocale();
   const isArabic = locale === "ar";
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   return (
     <div dir={isArabic ? "rtl" : "ltr"} className="min-h-screen bg-muted/30">
-      <DashboardSidebar />
+      <DashboardSidebar className="hidden lg:flex" onCollapsedChange={setSidebarCollapsed} />
 
       <div
         className={[
           "min-h-screen transition-[margin] duration-200",
-          isArabic ? "mr-64" : "ml-64",
+          isArabic
+            ? sidebarCollapsed ? "lg:mr-[76px]" : "lg:mr-64"
+            : sidebarCollapsed ? "lg:ml-[76px]" : "lg:ml-64",
         ].join(" ")}
       >
         <DashboardHeader
@@ -47,7 +50,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
               isArabic ? "right-0" : "left-0",
             ].join(" ")}
           >
-            <DashboardSidebar />
+            <DashboardSidebar className="flex lg:hidden" onNavigate={() => setMobileMenuOpen(false)} />
           </div>
         </div>
       )}

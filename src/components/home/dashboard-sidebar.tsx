@@ -60,7 +60,7 @@ export function DashboardSidebar({
       )}
 
       <aside
-        className={`fixed inset-y-0 z-50 flex w-[260px] flex-col border-slate-200 bg-white transition-transform duration-300 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
+        className={`fixed inset-y-0 z-50 flex w-[260px] flex-col border-slate-200 bg-white transition-[width,transform] duration-300 lg:fixed lg:top-0 lg:h-screen lg:translate-x-0 ${
           isArabic ? "right-0 border-l" : "left-0 border-r"
         } ${
           isOpen

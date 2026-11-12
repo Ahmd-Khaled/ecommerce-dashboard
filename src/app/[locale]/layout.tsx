@@ -20,6 +20,17 @@ export default async function LocaleLayout({
   children,
   params,
 }: LocaleLayoutProps) {
+  return (
+    <Suspense fallback={null}>
+      <LocaleContent params={params}>{children}</LocaleContent>
+    </Suspense>
+  );
+}
+
+async function LocaleContent({
+  children,
+  params,
+}: LocaleLayoutProps) {
   const { locale } = await params;
 
   if (!hasLocale(routing.locales, locale)) {
@@ -30,9 +41,7 @@ export default async function LocaleLayout({
 
   return (
     <div lang={locale} dir={direction}>
-      <Suspense fallback={null}>
-        <LocaleProviders locale={locale}>{children}</LocaleProviders>
-      </Suspense>
+      <LocaleProviders locale={locale}>{children}</LocaleProviders>
     </div>
   );
 }
