@@ -6,6 +6,7 @@ import { Check, ChevronDown, ChevronLeft, ChevronRight, EyeOff, RefreshCw, Rotat
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAdminAuth } from "@/features/admin-auth/hooks/use-admin-auth";
 import { AdminRoleEnum } from "@/features/admin-management/types/admin.types";
 import { useModerateReview, useRestoreReview, useReviewSettings, useReviews, useUpdateReviewSettings } from "../hooks/use-reviews";
@@ -20,7 +21,7 @@ const copy = {
     filters: "Filters", product: "Product ID", productHint: "Filter by product MongoDB ID", state: "Review state", all: "All states", pendingQueue: "New / pending queue",
     results: "Moderation queue", loading: "Loading reviews…", error: "Could not load reviews.", retry: "Try again", empty: "No reviews found.",
     customer: "Customer", productName: "Product", rating: "Rating", review: "Review", submitted: "Submitted", status: "Status", actions: "Actions",
-    publish: "Publish", hide: "Hide", remove: "Remove", restore: "Restore", reason: "Optional moderation reason", reasonPrompt: "Enter an optional moderation reason:",
+    publish: "Publish", hide: "Hide", remove: "Remove", restore: "Restore", reason: "Optional moderation reason", reasonPrompt: "Enter an optional moderation reason:", cancel: "Cancel", confirm: "Confirm", moderationTitle: "Moderate review", restoreTitle: "Restore review",
     history: "Moderation history", previous: "Previous", next: "Next", page: "Cursor page", noText: "No written feedback", inactive: "Archived product",
     restoreHint: "Restoration returns the review to hidden; publish it separately.", settingsError: "Could not load review settings.",
   },
@@ -54,6 +55,8 @@ export default function ReviewsPage() {
   const [productId, setProductId] = useState("");
   const [state, setState] = useState<ReviewState | "all">("all");
   const [newOnly, setNewOnly] = useState(false);
+  const [reasonDialog, setReasonDialog] = useState<{ id: string; action: "moderate" | "restore"; state?: "published" | "hidden" | "removed" } | null>(null);
+  const [reason, setReason] = useState("");
   const [cursorStack, setCursorStack] = useState<string[]>([]);
   const cursor = cursorStack.at(-1);
   const filters = useMemo<ReviewFilters>(() => ({
@@ -73,15 +76,18 @@ export default function ReviewsPage() {
 
   function resetPaging() { setCursorStack([]); }
   function changeState(value: string) { setState(value as ReviewState | "all"); setNewOnly(false); resetPaging(); }
-  function moderateReview(id: string, target: "published" | "hidden" | "removed") {
-    const reason = window.prompt(t.reasonPrompt);
-    if (reason === null) return;
-    moderate.mutate({ id, state: target, ...(reason.trim() ? { reason: reason.trim() } : {}) });
+  function openReasonDialog(payload: NonNullable<typeof reasonDialog>) {
+    setReason("");
+    setReasonDialog(payload);
   }
-  function restoreReview(id: string) {
-    const reason = window.prompt(t.reasonPrompt);
-    if (reason === null) return;
-    restore.mutate({ id, ...(reason.trim() ? { reason: reason.trim() } : {}) });
+  function submitReason() {
+    if (!reasonDialog) return;
+    const trimmedReason = reason.trim();
+    if (reasonDialog.action === "restore") {
+      restore.mutate({ id: reasonDialog.id, ...(trimmedReason ? { reason: trimmedReason } : {}) }, { onSuccess: () => setReasonDialog(null) });
+    } else if (reasonDialog.state) {
+      moderate.mutate({ id: reasonDialog.id, state: reasonDialog.state, ...(trimmedReason ? { reason: trimmedReason } : {}) }, { onSuccess: () => setReasonDialog(null) });
+    }
   }
   const formatDate = (value: string) => new Intl.DateTimeFormat(isArabic ? "ar-EG" : "en-EG", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 
@@ -139,10 +145,10 @@ export default function ReviewsPage() {
                 <div className="flex items-center gap-1 text-amber-500" aria-label={`${review.rating} / 5`}>{Array.from({ length: 5 }, (_, i) => <Star key={i} className={`size-4 ${i < review.rating ? "fill-current" : ""}`} />)}<span className="ms-1 text-xs text-muted-foreground">{review.rating}/5</span></div>
               </div>
               <div className="flex flex-wrap gap-2">
-                {review.state !== "published" && review.state !== "removed" && <Button size="sm" onClick={() => moderateReview(review.id, "published")} disabled={moderate.isPending}><Check className="size-4" />{t.publish}</Button>}
-                {review.state !== "hidden" && review.state !== "removed" && <Button size="sm" variant="outline" onClick={() => moderateReview(review.id, "hidden")} disabled={moderate.isPending}><EyeOff className="size-4" />{t.hide}</Button>}
-                {review.state !== "removed" && <Button size="sm" variant="destructive" onClick={() => moderateReview(review.id, "removed")} disabled={moderate.isPending}><Trash2 className="size-4" />{t.remove}</Button>}
-                {review.state === "removed" && isSuperAdmin && <Button size="sm" variant="outline" onClick={() => restoreReview(review.id)} disabled={restore.isPending}><RotateCcw className="size-4" />{t.restore}</Button>}
+                {review.state !== "published" && review.state !== "removed" && <Button size="sm" onClick={() => openReasonDialog({ id: review.id, action: "moderate", state: "published" })} disabled={moderate.isPending}><Check className="size-4" />{t.publish}</Button>}
+                {review.state !== "hidden" && review.state !== "removed" && <Button size="sm" variant="outline" onClick={() => openReasonDialog({ id: review.id, action: "moderate", state: "hidden" })} disabled={moderate.isPending}><EyeOff className="size-4" />{t.hide}</Button>}
+                {review.state !== "removed" && <Button size="sm" variant="destructive" onClick={() => openReasonDialog({ id: review.id, action: "moderate", state: "removed" })} disabled={moderate.isPending}><Trash2 className="size-4" />{t.remove}</Button>}
+                {review.state === "removed" && isSuperAdmin && <Button size="sm" variant="outline" onClick={() => openReasonDialog({ id: review.id, action: "restore" })} disabled={restore.isPending}><RotateCcw className="size-4" />{t.restore}</Button>}
               </div>
             </div>
             <p className="whitespace-pre-wrap text-sm leading-6">{review.text || <span className="italic text-muted-foreground">{t.noText}</span>}</p>
@@ -156,6 +162,19 @@ export default function ReviewsPage() {
           <Button size="sm" variant="outline" disabled={!query.data?.nextCursor || query.isFetching} onClick={() => { if (query.data?.nextCursor) setCursorStack((items) => [...items, query.data!.nextCursor!]); }} >{t.next}<ChevronRight className="size-4" /></Button>
         </div>
       </section>
+      <Dialog open={reasonDialog !== null} onOpenChange={(open) => { if (!open) setReasonDialog(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{reasonDialog?.action === "restore" ? t.restoreTitle : t.moderationTitle}</DialogTitle>
+            <DialogDescription>{t.reasonPrompt}</DialogDescription>
+          </DialogHeader>
+          <Input autoFocus value={reason} placeholder={t.reason} onChange={(event) => setReason(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !moderate.isPending && !restore.isPending) submitReason(); }} />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReasonDialog(null)} disabled={moderate.isPending || restore.isPending}>{t.cancel}</Button>
+            <Button onClick={submitReason} disabled={moderate.isPending || restore.isPending}>{t.confirm}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

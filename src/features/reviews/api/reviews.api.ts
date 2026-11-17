@@ -1,5 +1,5 @@
 import { api } from "@/lib/api/axios";
-import type { Review, ReviewFilters, ReviewList, ReviewSettings, ReviewState } from "../types/review.types";
+import type { ReviewFilters, ReviewList, ReviewSettings, ReviewState } from "../types/review.types";
 type ApiResponse<T> = { success: boolean; data: T };
 export const reviewsApi = {
   async list(filters: ReviewFilters): Promise<ReviewList> {
