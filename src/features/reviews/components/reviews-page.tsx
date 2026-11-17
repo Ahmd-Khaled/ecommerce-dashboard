@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useAdminAuth } from "@/features/admin-auth/hooks/use-admin-auth";
+import { AdminRoleEnum } from "@/features/admin-management/types/admin.types";
 import { useModerateReview, useRestoreReview, useReviewSettings, useReviews, useUpdateReviewSettings } from "../hooks/use-reviews";
 import type { ReviewFilters, ReviewState } from "../types/review.types";
 
@@ -49,7 +50,7 @@ export default function ReviewsPage() {
   const isArabic = locale === "ar";
   const t = copy[isArabic ? "ar" : "en"];
   const { admin } = useAdminAuth();
-  const isSuperAdmin = String(admin?.role ?? "").toUpperCase() === "SUPER_ADMIN";
+  const isSuperAdmin = admin?.role === AdminRoleEnum.SUPER_ADMIN;
   const [productId, setProductId] = useState("");
   const [state, setState] = useState<ReviewState | "all">("all");
   const [newOnly, setNewOnly] = useState(false);
