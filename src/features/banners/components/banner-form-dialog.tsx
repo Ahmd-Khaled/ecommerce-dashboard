@@ -34,10 +34,14 @@ function toIso(value: string) {
   return value ? new Date(value).toISOString() : null;
 }
 
-export function BannerFormDialog({ open, banner, isPending, isArabic, onClose, onSubmit }: Props) {
+export function BannerFormDialog(props: Props) {
+  const sessionKey = `${props.open ? "open" : "closed"}:${props.banner?._id ?? "new"}`;
+  return <BannerFormDialogSession key={sessionKey} {...props} />;
+}
+
+function BannerFormDialogSession({ open, banner, isPending, isArabic, onClose, onSubmit }: Props) {
   const editing = Boolean(banner);
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState("");
   const t = useMemo(() => ({
     create: isArabic ? "إضافة بانر" : "Create banner",
     edit: isArabic ? "تعديل البانر" : "Edit banner",
@@ -72,7 +76,6 @@ export function BannerFormDialog({ open, banner, isPending, isArabic, onClose, o
   });
 
   useEffect(() => {
-    if (!open) return;
     reset({
       language: banner?.language ?? "en",
       view: banner?.view ?? "desktop",
@@ -84,16 +87,13 @@ export function BannerFormDialog({ open, banner, isPending, isArabic, onClose, o
       startsAt: toDateTimeLocal(banner?.startsAt),
       endsAt: toDateTimeLocal(banner?.endsAt),
     });
-    setImageFile(null);
-    setImagePreview(banner?.image ?? "");
-  }, [open, banner, reset]);
+  }, [banner, reset]);
 
+  const imagePreview = useMemo(() => imageFile ? URL.createObjectURL(imageFile) : banner?.image ?? "", [imageFile, banner?.image]);
   useEffect(() => {
-    if (!imageFile) return;
-    const url = URL.createObjectURL(imageFile);
-    setImagePreview(url);
-    return () => URL.revokeObjectURL(url);
-  }, [imageFile]);
+    if (!imageFile || !imagePreview.startsWith("blob:")) return;
+    return () => URL.revokeObjectURL(imagePreview);
+  }, [imageFile, imagePreview]);
 
   function selectImage(file?: File) {
     if (!file) return;
@@ -151,7 +151,7 @@ export function BannerFormDialog({ open, banner, isPending, isArabic, onClose, o
             <div className="space-y-2">
               <Label>{t.image}</Label>
               <div className="overflow-hidden rounded-xl border bg-muted/30">
-                {imagePreview ? <div className="relative"><Image src={imagePreview} alt={t.image} width={640} height={480} unoptimized className="aspect-[4/3] w-full object-contain" /><button type="button" onClick={() => { setImageFile(null); setImagePreview(banner?.image ?? ""); }} className="absolute end-2 top-2 rounded-full bg-background/90 p-1.5 shadow" aria-label="Remove selected image"><X className="size-4" /></button></div> : <div className="flex aspect-[4/3] flex-col items-center justify-center gap-2 text-muted-foreground"><ImagePlus className="size-8" /><span className="text-xs">{t.imageHelp}</span></div>}
+                {imagePreview ? <div className="relative"><Image src={imagePreview} alt={t.image} width={640} height={480} unoptimized className="aspect-[4/3] w-full object-contain" /><button type="button" onClick={() => setImageFile(null)} className="absolute end-2 top-2 rounded-full bg-background/90 p-1.5 shadow" aria-label="Remove selected image"><X className="size-4" /></button></div> : <div className="flex aspect-[4/3] flex-col items-center justify-center gap-2 text-muted-foreground"><ImagePlus className="size-8" /><span className="text-xs">{t.imageHelp}</span></div>}
                 <label className="flex cursor-pointer items-center justify-center gap-2 border-t px-3 py-3 text-sm font-medium hover:bg-muted"><UploadCloud className="size-4" />{imagePreview ? t.replace : t.chooseImage}<input type="file" accept="image/*" className="sr-only" onChange={(event) => selectImage(event.target.files?.[0])} /></label>
               </div>
               <p className="text-xs leading-5 text-muted-foreground">{t.imageHelp}</p>
