@@ -16,6 +16,7 @@ import {
   PanelLeftOpen,
   ImageIcon,
   PanelsTopLeft,
+  Star,
 } from "lucide-react";
 
 import { useAdminAuth } from "@/features/admin-auth/hooks/use-admin-auth";
@@ -72,6 +73,11 @@ export function DashboardSidebar({ className, onNavigate, onCollapsedChange }: D
       label: isArabic ? "الطلبات" : "Orders",
       href: `/${locale}/orders`,
       icon: ShoppingCart,
+    },
+    {
+      label: isArabic ? "تقييمات المنتجات" : "Product Reviews",
+      href: `/${locale}/reviews`,
+      icon: Star,
     },
     {
       label: isArabic ? "المدفوعات" : "Payments",
