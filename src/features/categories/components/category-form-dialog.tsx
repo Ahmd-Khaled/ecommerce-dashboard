@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useEffect, useMemo, useRef } from "react";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { z } from "zod";
 import { useTranslations } from "next-intl";
@@ -11,7 +11,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -71,8 +70,7 @@ export function CategoryFormDialog({
   const t = useTranslations("Categories");
   const isEditing = Boolean(category);
 
-  const [imagePreview, setImagePreview] = useState("");
-  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
+  const slugManuallyEdited = useRef(false);
 
   const excludedIds = useMemo(
     () =>
@@ -87,7 +85,7 @@ export function CategoryFormDialog({
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     setValue,
     reset,
     formState: { errors },
@@ -104,8 +102,7 @@ export function CategoryFormDialog({
     },
   });
 
-  const name = watch("name");
-  const imageFile = watch("imageFile");
+  const imageFile = useWatch({ control, name: "imageFile" });
 
   useEffect(() => {
     if (!open) return;
@@ -125,18 +122,17 @@ export function CategoryFormDialog({
       imageFile: null,
     });
 
-    setImagePreview(category?.image ?? "");
-    setSlugManuallyEdited(Boolean(category));
+    slugManuallyEdited.current = Boolean(category);
   }, [open, category, reset]);
 
+  const imagePreview = useMemo(
+    () => imageFile ? URL.createObjectURL(imageFile) : category?.image ?? "",
+    [imageFile, category?.image],
+  );
   useEffect(() => {
-    if (!imageFile) return;
-
-    const preview = URL.createObjectURL(imageFile);
-    setImagePreview(preview);
-
-    return () => URL.revokeObjectURL(preview);
-  }, [imageFile]);
+    if (!imageFile || !imagePreview.startsWith("blob:")) return;
+    return () => URL.revokeObjectURL(imagePreview);
+  }, [imageFile, imagePreview]);
 
   function generateSlug(value: string) {
     return value
@@ -149,7 +145,7 @@ export function CategoryFormDialog({
   function handleNameChange(value: string) {
     setValue("name", value, { shouldValidate: true });
 
-    if (!slugManuallyEdited) {
+    if (!slugManuallyEdited.current) {
       setValue("slug", generateSlug(value), {
         shouldValidate: true,
       });
@@ -231,7 +227,7 @@ export function CategoryFormDialog({
                   <input
                     {...register("slug")}
                     onChange={(event) => {
-                      setSlugManuallyEdited(true);
+                      slugManuallyEdited.current = true;
                       setValue("slug", event.target.value.toLowerCase(), {
                         shouldValidate: true,
                       });

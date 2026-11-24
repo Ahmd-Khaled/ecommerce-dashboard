@@ -8,7 +8,6 @@ import {
   ChevronDown,
   Eye,
   Filter,
-  MoreHorizontal,
   Search,
 } from "lucide-react";
 

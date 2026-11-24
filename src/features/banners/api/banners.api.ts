@@ -19,7 +19,8 @@ function toFormData(payload: BannerPayload) {
 }
 
 function toJson(payload: BannerPayload) {
-  const { imageFile: _imageFile, ...body } = payload;
+  const body = { ...payload };
+  delete body.imageFile;
   return { ...body, linkUrl: body.linkUrl || null, startsAt: body.startsAt || null, endsAt: body.endsAt || null };
 }
 

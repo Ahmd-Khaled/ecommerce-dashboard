@@ -9,7 +9,6 @@ import type {
 
 function createCategoryFormData(
   payload: CategoryPayload,
-  isUpdate = false,
 ): FormData {
   const formData = new FormData();
 
@@ -22,11 +21,6 @@ function createCategoryFormData(
   if (payload.parent) {
     formData.append("parent", payload.parent);
   }
-  // else if (isUpdate) {
-  //   // The backend interprets null as moving to root.
-  //   formData.append("parent", "");
-  // }
-
   if (payload.imageFile) {
     formData.append("image", payload.imageFile);
   }
@@ -65,7 +59,7 @@ export const categoriesApi = {
     id: string,
     payload: CategoryPayload,
   ): Promise<Category> {
-    const formData = createCategoryFormData(payload, true);
+    const formData = createCategoryFormData(payload);
 
     const { data } = await api.patch<
       CategoryApiResponse<{ category: Category }>

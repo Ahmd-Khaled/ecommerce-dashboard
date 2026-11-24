@@ -136,7 +136,7 @@ export default function PaymentsPage() {
   }, [page, fromDate, toDate]);
 
   const ordersQuery = usePaymentOrders(params);
-  const orders = ordersQuery.data?.orders ?? [];
+  const orders = useMemo(() => ordersQuery.data?.orders ?? [], [ordersQuery.data?.orders]);
   const pagination = ordersQuery.data?.pagination;
 
   // The backend currently supports date filters, but not payment-status

@@ -12,11 +12,10 @@ import {
   Package,
   Save,
   Sparkles,
-  Trash2,
   Upload,
   X,
 } from "lucide-react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 
 import {
   productSchema,
@@ -131,7 +130,7 @@ export function ProductForm({ mode, product }: ProductFormProps) {
   const router = useRouter();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const slugManuallyChanged = useRef(false);
+  const [slugManuallyChanged, setSlugManuallyChanged] = useState(false);
 
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
@@ -139,7 +138,14 @@ export function ProductForm({ mode, product }: ProductFormProps) {
   const { data: categories = [], isLoading: categoriesLoading } =
     useProductCategories();
 
-  const [images, setImages] = useState<ImagePreview[]>([]);
+  const [images, setImages] = useState<ImagePreview[]>(() =>
+    mode === "edit"
+      ? (product?.images ?? []).map((url, index) => ({
+          id: `existing-${index}`,
+          url,
+        }))
+      : [],
+  );
   const [imageError, setImageError] = useState("");
 
   const isPending = createProduct.isPending || updateProduct.isPending;
@@ -150,7 +156,6 @@ export function ProductForm({ mode, product }: ProductFormProps) {
     register,
     control,
     handleSubmit,
-    watch,
     setValue,
     formState: { errors },
   } = useForm<ProductFormInput, unknown, ProductFormValues>({
@@ -158,28 +163,18 @@ export function ProductForm({ mode, product }: ProductFormProps) {
     defaultValues: initialValues,
   });
 
-  const productName = watch("name");
-  const price = watch("price");
-  const compareAtPrice = watch("compareAtPrice");
+  const productName = useWatch({ control, name: "name" });
+  const price = useWatch({ control, name: "price" });
+  const compareAtPrice = useWatch({ control, name: "compareAtPrice" });
+  const stock = useWatch({ control, name: "stock" });
 
   useEffect(() => {
-    if (mode !== "edit" || !product) return;
-
-    setImages(
-      (product.images ?? []).map((url, index) => ({
-        id: `existing-${index}`,
-        url,
-      })),
-    );
-  }, [mode, product]);
-
-  useEffect(() => {
-    if (mode === "create" && !slugManuallyChanged.current) {
+    if (mode === "create" && !slugManuallyChanged) {
       setValue("slug", slugify(productName), {
         shouldValidate: true,
       });
     }
-  }, [mode, productName, setValue]);
+  }, [mode, productName, setValue, slugManuallyChanged]);
 
   useEffect(() => {
     return () => {
@@ -383,11 +378,13 @@ export function ProductForm({ mode, product }: ProductFormProps) {
               >
                 <div className="relative">
                   <input
-                    {...register("slug", {
-                      onChange: () => {
-                        slugManuallyChanged.current = true;
-                      },
-                    })}
+                    {...register("slug")}
+                    onChange={(event) => {
+                      setSlugManuallyChanged(true);
+                      setValue("slug", event.target.value, {
+                        shouldValidate: true,
+                      });
+                    }}
                     placeholder="premium-wireless-headphones"
                     className={inputClass}
                   />
@@ -708,7 +705,7 @@ export function ProductForm({ mode, product }: ProductFormProps) {
                 </p>
 
                 <p className="text-xs text-muted-foreground">
-                  {Number(watch("stock") || 0)} units available
+                  {Number(stock || 0)} units available
                 </p>
               </div>
             </div>
