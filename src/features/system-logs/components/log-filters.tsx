@@ -49,12 +49,15 @@ export function LogFilters({ draft, onChange, onApply, onReset, disabled, valida
 
   return (
     <form aria-labelledby={headingId} aria-describedby={validation ? errorId : undefined}
-      onSubmit={event => { event.preventDefault(); onApply(); }} className="rounded-2xl border bg-card p-5 shadow-sm">
-      <div className="mb-5 flex items-center gap-3">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><Filter aria-hidden="true" className="size-4" /></span>
-        <h2 id={headingId} className="font-semibold">{t("Filter requests", "تصفية الطلبات")}</h2>
+      onSubmit={event => { event.preventDefault(); onApply(); }} className="rounded-2xl border bg-card p-5 shadow-sm md:p-6">
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><Filter aria-hidden="true" className="size-4" /></span>
+          <h2 id={headingId} className="font-semibold">{t("Filter requests", "تصفية الطلبات")}</h2>
+        </div>
+        <span className="hidden text-xs text-muted-foreground sm:inline">{t("Refine the request stream", "حدد الطلبات المعروضة")}</span>
       </div>
-      <div className="grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid items-start gap-x-5 gap-y-4 sm:grid-cols-2 xl:grid-cols-4">
         <Field label={t("Time range", "الفترة الزمنية")}>{id => <Choice id={id} ar={ar} value={draft.range} onChange={value => onChange("range", value)} options={[
           { value: "1", label: t("Last hour", "آخر ساعة") },
           { value: "6", label: t("Last 6 hours", "آخر 6 ساعات") },
@@ -88,7 +91,7 @@ export function LogFilters({ draft, onChange, onApply, onReset, disabled, valida
         <Field label={t("Minimum duration (ms)", "أقل مدة (مللي ثانية)")}>{id => <Input id={id} className={inputClass} type="number" min={0} max={2147483647} step={1} placeholder="0" value={draft.minDurationMs || ""} onChange={event => onChange("minDurationMs", event.target.value)} />}</Field>
         <Field label={t("Rows per page", "عدد الصفوف")}>{id => <Choice id={id} ar={ar} value={draft.limit} onChange={value => onChange("limit", value)} options={[25, 50, 100].map(value => ({ value: String(value), label: String(value) }))} />}</Field>
       </div>
-      <div className="mt-5 flex flex-col gap-4 border-t pt-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="mt-6 flex flex-col gap-4 border-t pt-4 lg:flex-row lg:items-center lg:justify-between">
         <p className="max-w-2xl text-sm leading-6 text-muted-foreground">{t("Routes are local templates, not full URLs. Date ranges must fit the backend retention period.", "المسارات قوالب محلية وليست روابط كاملة. يجب أن تكون الفترة ضمن مدة الاحتفاظ بالخادم.")}</p>
         <div className="flex w-full shrink-0 flex-wrap gap-2 sm:w-auto">
           <Button type="button" variant="outline" className={actionClass} disabled={disabled} onClick={onReset}><RotateCcw aria-hidden="true" className="size-4 shrink-0" />{t("Reset", "إعادة ضبط")}</Button>

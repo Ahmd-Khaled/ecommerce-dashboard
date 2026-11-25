@@ -3,7 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useLocale } from "next-intl";
 import axios from "axios";
-import { Activity, AlertTriangle, CheckCircle2, Clock3, RefreshCw, Search, ShieldCheck } from "lucide-react";
+import { Activity, AlertTriangle, CheckCircle2, Clock3, Pause, Play, RefreshCw, Search, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LogFilters as LogFiltersForm } from "./log-filters";
 import { Badge } from "@/components/ui/badge";
@@ -58,6 +58,13 @@ const tones = {
   denied: "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300",
   aborted: "border-violet-500/20 bg-violet-500/10 text-violet-700 dark:text-violet-300",
 };
+const methodTones: Record<string, string> = {
+  GET: "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300",
+  POST: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  PUT: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  PATCH: "border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300",
+  DELETE: "border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300",
+};
 
 function LogWorkspace() {
   const locale = useLocale();
@@ -74,10 +81,32 @@ function LogWorkspace() {
   const [validation, setValidation] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
+  const [refreshSeconds, setRefreshSeconds] = useState(30);
+  const [autoRefresh, setAutoRefresh] = useState(false);
   useEffect(() => {
     const timer = setInterval(() => setCooldown(getLogCooldown()), 1000);
     return () => clearInterval(timer);
   }, []);
+  useEffect(() => {
+    if (!autoRefresh) return;
+    const timer = window.setTimeout(() => {
+      if (document.visibilityState !== "visible") return;
+      if (refreshSeconds <= 1) {
+        if (getLogCooldown() === 0) refresh(true);
+        else setRefreshSeconds(30);
+      } else setRefreshSeconds(seconds => seconds - 1);
+    }, 1000);
+    return () => window.clearTimeout(timer);
+    // The countdown drives refreshes and preserves the current pagination cursor.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoRefresh, refreshSeconds, cooldown, appliedRange, filters, cursors]);
+  useEffect(() => {
+    const resumeCountdown = () => {
+      if (document.visibilityState === "visible" && autoRefresh) setRefreshSeconds(30);
+    };
+    document.addEventListener("visibilitychange", resumeCountdown);
+    return () => document.removeEventListener("visibilitychange", resumeCountdown);
+  }, [autoRefresh]);
   const after = cursors.at(-1);
   const list = useRead<LogPage>(signal => systemLogsApi.list(filters, after, signal), [filters, after, revision]);
   const stats = useRead<LogStatistics>(signal => systemLogsApi.statistics(filters, signal), [filters.from, filters.to, filters.method, filters.route, revision]);
@@ -116,9 +145,11 @@ function LogWorkspace() {
     setValidation(""); setCursors([undefined]); setSelected(null); setFilters(next); setAppliedRange(d.range);
     if (reset) setDraft(d);
   }
-  function refresh() {
+  function refresh(preservePage = false) {
     if (getLogCooldown()) return;
-    setCursors([undefined]); setSelected(null);
+    setRefreshSeconds(30);
+    if (!preservePage) setCursors([undefined]);
+    setSelected(null);
     if (appliedRange !== "custom") {
       const now = Date.now();
       setFilters(old => ({ ...old, from: new Date(now - Number(appliedRange) * 3600000).toISOString(), to: new Date(now).toISOString() }));
@@ -143,21 +174,40 @@ function LogWorkspace() {
     { label: t("Unsuccessful", "غير الناجحة"), value: s && number(s.failedRequests), hint: t("Includes denied and aborted", "تشمل المرفوضة والمنقطعة"), Icon: AlertTriangle, color: "text-rose-600 bg-rose-500/10" },
     { label: t("P95 latency", "زمن الاستجابة P95"), value: s && (s.totalRequests ? `${number(s.p95DurationMs)} ms` : t("No data", "لا توجد بيانات")), hint: t("Approximate 95th percentile", "المئين 95 التقريبي"), Icon: Clock3, color: "text-violet-600 bg-violet-500/10" },
   ];
-  return <div className="mx-auto max-w-[1600px] space-y-6 p-4 md:p-8" dir={ar ? "rtl" : "ltr"}>
-    <header className="flex flex-wrap items-start justify-between gap-4"><div><div className="mb-3 flex items-center gap-2 text-sm font-medium text-primary"><ShieldCheck className="size-4" />{t("SYSTEM OBSERVABILITY", "مراقبة النظام")}</div><h1 className="text-3xl font-semibold tracking-tight">{t("System logs", "سجلات النظام")}</h1><p className="mt-2 max-w-2xl text-muted-foreground">{t("Trace requests, investigate failures, and understand response times.", "تتبّع الطلبات وافحص الأخطاء وراقب أوقات الاستجابة.")}</p></div><Button variant="outline" onClick={refresh} disabled={cooldown > 0 || list.loading || stats.loading}><RefreshCw className={list.loading ? "size-4 animate-spin" : "size-4"} />{t("Refresh", "تحديث")}</Button></header>
-    <p className="text-sm text-muted-foreground">{t("Timezone", "المنطقة الزمنية")}: {Intl.DateTimeFormat().resolvedOptions().timeZone}{list.updatedAt && <> · {t("Table updated", "تحديث الجدول")}: {date(list.updatedAt)}</>}</p>
+  return <div className="mx-auto max-w-[1600px] space-y-5 p-4 md:space-y-5 md:p-8" dir={ar ? "rtl" : "ltr"}>
+    <div className="fixed bottom-5 end-5 z-40 flex items-center gap-2 rounded-full border border-border/80 bg-card/95 p-1.5 shadow-lg backdrop-blur" role="group" aria-label={t("Auto refresh controls", "Auto refresh controls")}>
+      <div className="relative grid size-10 place-items-center rounded-full" role="timer" aria-label={autoRefresh ? t(`Refreshes in ${refreshSeconds} seconds`, `يُحدّث خلال ${refreshSeconds} ثانية`) : t("Auto refresh paused", "التحديث التلقائي متوقف")} style={{ background: `conic-gradient(var(--primary) ${autoRefresh ? ((30 - refreshSeconds) / 30) * 360 : 0}deg, var(--muted) 0deg)` }}>
+        <div className="absolute inset-[3px] rounded-full bg-card" />
+        <span key={`${autoRefresh}-${refreshSeconds}`} className="relative z-10 text-xs font-semibold tabular-nums animate-in fade-in zoom-in-95 duration-200 motion-reduce:animate-none">{refreshSeconds}</span>
+      </div>
+      <Button type="button" size="icon" variant="ghost" className="size-9 rounded-full" aria-label={autoRefresh ? t("Pause auto refresh", "إيقاف التحديث التلقائي") : t("Start auto refresh", "بدء التحديث التلقائي")} title={autoRefresh ? t("Pause auto refresh", "إيقاف التحديث التلقائي") : t("Start auto refresh", "بدء التحديث التلقائي")} onClick={() => setAutoRefresh(running => !running)}>{autoRefresh ? <Pause className="size-4" /> : <Play className="size-4" />}</Button>
+    </div>
+    <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 rounded-2xl border bg-card px-5 py-4 shadow-sm md:px-6">
+      <div className="min-w-0"><div className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-primary"><ShieldCheck className="size-3.5" />{t("System observability", "مراقبة النظام")}</div><div className="flex flex-wrap items-baseline gap-x-3 gap-y-1"><h1 className="text-2xl font-semibold tracking-tight">{t("System logs", "سجلات النظام")}</h1><p className="text-sm text-muted-foreground">{t("Trace requests, investigate failures, and understand response times.", "تتبع الطلبات وافحص الأخطاء وراقب أوقات الاستجابة.")}</p></div><div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground"><span>{t("Timezone", "المنطقة الزمنية")}: {Intl.DateTimeFormat().resolvedOptions().timeZone}</span>{list.updatedAt && <><span aria-hidden="true">·</span><span>{t("Updated", "آخر تحديث")}: {date(list.updatedAt)}</span></>}</div></div>
+      <Button variant="outline" size="sm" className="shrink-0 gap-2" onClick={() => refresh()} disabled={cooldown > 0 || list.loading || stats.loading}><RefreshCw className={list.loading ? "size-4 animate-spin" : "size-4"} />{t("Refresh", "تحديث")}</Button>
+    </header>
     {cooldown > 0 && <p role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">{t("Requests paused. Retry in", "الطلبات متوقفة. أعد المحاولة بعد")} {cooldown} {t("seconds", "ثانية")}</p>}
     <section aria-label={t("Request statistics", "إحصائيات الطلبات")} className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">{t("Request overview", "نظرة عامة على الطلبات")}</h2><span className="text-sm text-muted-foreground">{t("Statistics use time range, method and route only", "الإحصائيات حسب الفترة والطريقة والمسار فقط")}</span></div>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{cards.map(({ label, value, hint, Icon, color }) => <div key={label} className="rounded-2xl border bg-card p-5 shadow-sm"><div className="flex items-center justify-between gap-3"><p className="text-sm font-medium text-muted-foreground">{label}</p><span className={`rounded-xl p-2.5 ${color}`}><Icon className="size-5" /></span></div><p className="mt-4 text-3xl font-semibold tabular-nums">{stats.loading ? <span className="block h-9 w-24 animate-pulse rounded bg-muted" /> : value ?? "—"}</p><p className="mt-2 text-sm text-muted-foreground">{hint}</p></div>)}</div>
-      {stats.error ? errorBox(stats.error, refresh) : null}
-      {s && <div className="flex flex-wrap gap-x-6 gap-y-2 rounded-xl border bg-muted/30 px-4 py-3 text-sm">{[[t("Average", "المتوسط"), (s.totalRequests ? `${number(s.averageDurationMs)} ms` : t("No data", "لا توجد بيانات"))], ["P50", (s.totalRequests ? `${number(s.p50DurationMs)} ms` : t("No data", "لا توجد بيانات"))], ["P99", (s.totalRequests ? `${number(s.p99DurationMs)} ms` : t("No data", "لا توجد بيانات"))], [t("Maximum", "الأقصى"), (s.totalRequests ? `${number(s.maxDurationMs)} ms` : t("No data", "لا توجد بيانات"))], [t("Slow ≥ 1 s", "بطيئة ≥ ثانية"), number(s.slowRequests)], ["4xx", number(s.clientErrorRequests)], ["5xx", number(s.serverErrorRequests)], [t("Denied", "مرفوضة"), number(s.deniedRequests)], [t("Aborted", "منقطعة"), number(s.abortedRequests)]].map(([label, value]) => <span key={label} className="text-muted-foreground">{label} <strong className="ms-1 font-semibold text-foreground tabular-nums">{value}</strong></span>)}</div>}
-      {s && <p className="text-sm text-muted-foreground">{date(s.from)} — {date(s.to)} · {t("Local time • Stored diagnostics may be incomplete; this is not an audit trail.", "التوقيت المحلي • قد تكون البيانات التشخيصية غير مكتملة؛ ليست سجلاً للتدقيق.")}</p>}
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1"><h2 className="text-base font-semibold tracking-tight">{t("Request overview", "نظرة عامة على الطلبات")}</h2><p className="text-xs text-muted-foreground">{t("Statistics use time range, method and route only", "الإحصائيات حسب الفترة والطريقة والمسار فقط")}</p></div>
+      {s && <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+        <section aria-label={t("Response time", "زمن الاستجابة")} className="rounded-2xl border bg-card p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-3"><div><h3 className="font-semibold">{t("Response time", "زمن الاستجابة")}</h3><p className="mt-1 text-sm text-muted-foreground">{t("Latency distribution across requests", "توزيع زمن الاستجابة للطلبات")}</p></div><Clock3 className="size-5 text-violet-600" /></div>
+          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">{[[t("Average", "المتوسط"), s.averageDurationMs], ["P50", s.p50DurationMs], ["P99", s.p99DurationMs], [t("Maximum", "الأقصى"), s.maxDurationMs]].map(([label, value], index) => <div key={label} className={`rounded-xl p-3 ${index === 2 ? "bg-amber-500/10" : "bg-muted/50"}`}><p className="text-xs font-medium text-muted-foreground">{label}</p><p className="mt-2 whitespace-nowrap text-lg font-semibold tabular-nums">{s.totalRequests ? number(Number(value)) : "—"}<span className="ms-1 text-xs font-normal text-muted-foreground">ms</span></p></div>)}</div>
+        </section>
+        <section aria-label={t("Request signals", "مؤشرات الطلبات")} className="rounded-2xl border bg-card p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-3"><div><h3 className="font-semibold">{t("Request signals", "مؤشرات الطلبات")}</h3><p className="mt-1 text-sm text-muted-foreground">{t("Slow requests and non-success outcomes", "الطلبات البطيئة والنتائج غير الناجحة")}</p></div><AlertTriangle className="size-5 text-amber-600" /></div>
+          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">{[[t("Slow ≥ 1 s", "بطيئة ≥ ثانية"), s.slowRequests, "text-amber-700 dark:text-amber-300"], ["4xx", s.clientErrorRequests, "text-orange-700 dark:text-orange-300"], ["5xx", s.serverErrorRequests, "text-rose-700 dark:text-rose-300"], [t("Denied", "مرفوضة"), s.deniedRequests, "text-amber-700 dark:text-amber-300"], [t("Aborted", "منقطعة"), s.abortedRequests, "text-violet-700 dark:text-violet-300"]].map(([label, value, color]) => <div key={label} className="rounded-xl bg-muted/50 p-3"><p className="text-xs font-medium text-muted-foreground">{label}</p><p className={`mt-2 text-xl font-semibold tabular-nums ${color}`}>{number(Number(value))}</p></div>)}</div>
+        </section>
+      </div>}
+      {s && <div className="flex flex-col gap-3 rounded-xl border bg-muted/20 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-start gap-3"><Clock3 className="mt-0.5 size-4 shrink-0 text-muted-foreground" /><p className="min-w-0 text-sm font-medium tabular-nums"><span className="text-muted-foreground">{t("Time range", "النطاق الزمني")}</span><span className="mx-2 text-muted-foreground">·</span><span dir="auto">{date(s.from)} — {date(s.to)}</span></p></div>
+        <p className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground sm:max-w-md sm:justify-end"><ShieldCheck className="mt-0.5 size-3.5 shrink-0" /><span>{t("Local time · Stored diagnostics may be incomplete; this is not an audit trail.", "التوقيت المحلي · قد تكون البيانات التشخيصية غير مكتملة؛ وهذه ليست سجلًا للتدقيق.")}</span></p>
+      </div>}
     </section>
     <LogFiltersForm draft={draft} onChange={set} onApply={() => apply()} onReset={() => apply(true)} disabled={cooldown > 0} validation={validation} />
     <section className="overflow-hidden rounded-2xl border bg-card shadow-sm" aria-busy={list.loading}>
-      <div className="flex items-center justify-between gap-3 border-b p-5"><div><h2 className="font-semibold">{t("Request stream", "سجل الطلبات")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("Newest first · Select a request to inspect its details", "الأحدث أولاً · اختر طلباً لعرض تفاصيله")}</p></div><Badge variant="outline">{t("Page", "صفحة")} {cursors.length}</Badge></div>
-      {list.loading ? <div role="status" className="space-y-3 p-6"><span className="sr-only">{t("Loading requests", "جارٍ تحميل الطلبات")}</span>{Array.from({ length: 5 }, (_, i) => <div key={i} className="h-12 animate-pulse rounded-lg bg-muted" />)}</div> : list.error ? <div className="p-5">{errorBox(list.error, refresh)}</div> : !list.data?.items.length ? <div className="px-5 py-16 text-center"><Search className="mx-auto mb-4 size-9 text-muted-foreground" /><h3 className="font-semibold">{t("No matching requests", "لا توجد طلبات مطابقة")}</h3><p className="mt-2 text-muted-foreground">{t("Try a wider time range or remove a filter.", "جرّب فترة أوسع أو احذف أحد عوامل التصفية.")}</p></div> : <div className="overflow-x-auto"><table className="w-full text-start text-sm"><thead className="bg-muted/40 text-muted-foreground"><tr>{[t("Time", "الوقت"), t("Request", "الطلب"), t("Status", "الحالة"), t("Outcome", "النتيجة"), t("Duration", "المدة"), t("Request ID", "معرّف الطلب")].map(h => <th key={h} className="px-5 py-3 text-start font-medium">{h}</th>)}</tr></thead><tbody className="divide-y">{list.data.items.map(row => <tr key={row.logId} className="hover:bg-muted/30"><td className="whitespace-nowrap px-5 py-4 tabular-nums">{date(row.occurredAt)}</td><td className="px-5 py-4"><button disabled={cooldown > 0} onClick={() => setSelected(row.logId)} className="flex items-center gap-3 rounded text-start focus-visible:outline-2 focus-visible:outline-ring"><Badge variant="outline" className="font-mono">{row.http.method}</Badge><span dir="ltr" className="max-w-64 truncate font-mono text-primary underline-offset-4 hover:underline" title={row.http.route}>{row.http.route}</span><span className="sr-only">{t("View details", "عرض التفاصيل")}</span></button></td><td className="px-5 py-4 font-mono">{row.http.statusCode}</td><td className="px-5 py-4"><Badge className={tones[row.outcome]}>{outcome(row.outcome)}</Badge>{!row.http.completed && <span className="mt-1 block text-xs text-muted-foreground">{t("Incomplete response", "استجابة غير مكتملة")}</span>}</td><td className="whitespace-nowrap px-5 py-4 font-mono">{number(row.http.durationMs)} ms</td><td className="px-5 py-4"><span dir="ltr" title={row.requestId} className="block max-w-36 truncate font-mono text-muted-foreground select-all">{row.requestId}</span></td></tr>)}</tbody></table></div>}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b p-5"><div><h2 className="text-lg font-semibold tracking-tight">{t("Request stream", "سجل الطلبات")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("Newest first · Select a request to inspect its details", "الأحدث أولًا · اختر طلبًا لعرض تفاصيله")}</p></div><div className="flex items-center gap-2"><Badge variant="secondary" className="tabular-nums">{t("Page", "صفحة")} {cursors.length}</Badge><Button type="button" variant="outline" size="icon" className="size-8" aria-label={t("Refresh request table", "تحديث جدول الطلبات")} title={t("Refresh request table", "تحديث جدول الطلبات")} onClick={() => refresh(true)} disabled={cooldown > 0 || list.loading}><RefreshCw className={list.loading ? "size-3.5 animate-spin" : "size-3.5"} /></Button></div></div>
+      {list.loading ? <div role="status" className="space-y-3 p-6"><span className="sr-only">{t("Loading requests", "جارٍ تحميل الطلبات")}</span>{Array.from({ length: 5 }, (_, i) => <div key={i} className="h-12 animate-pulse rounded-lg bg-muted" />)}</div> : list.error ? <div className="p-5">{errorBox(list.error, refresh)}</div> : !list.data?.items.length ? <div className="px-5 py-16 text-center"><Search className="mx-auto mb-4 size-9 text-muted-foreground" /><h3 className="font-semibold">{t("No matching requests", "لا توجد طلبات مطابقة")}</h3><p className="mt-2 text-muted-foreground">{t("Try a wider time range or remove a filter.", "جرّب فترة أوسع أو احذف أحد عوامل التصفية.")}</p></div> : <div className="overflow-x-auto"><table className="w-full text-start text-sm"><thead className="bg-muted/40 text-muted-foreground"><tr>{[t("Time", "الوقت"), t("Request", "الطلب"), t("Status", "الحالة"), t("Outcome", "النتيجة"), t("Duration", "المدة"), t("Request ID", "معرّف الطلب")].map(h => <th key={h} className="px-5 py-3 text-start font-medium">{h}</th>)}</tr></thead><tbody className="divide-y">{list.data.items.map(row => <tr key={row.logId} className="hover:bg-muted/30"><td className="whitespace-nowrap px-5 py-4 tabular-nums">{date(row.occurredAt)}</td><td className="px-5 py-4"><button disabled={cooldown > 0} onClick={() => setSelected(row.logId)} className="flex items-center gap-3 rounded text-start focus-visible:outline-2 focus-visible:outline-ring"><Badge variant="outline" className={`font-mono font-semibold ${methodTones[row.http.method] ?? "border-slate-500/30 bg-slate-500/10 text-slate-700 dark:text-slate-300"}`}>{row.http.method}</Badge><span dir="ltr" className="max-w-64 truncate font-mono text-primary underline-offset-4 hover:underline" title={row.http.route}>{row.http.route}</span><span className="sr-only">{t("View details", "عرض التفاصيل")}</span></button></td><td className="px-5 py-4 font-mono">{row.http.statusCode}</td><td className="px-5 py-4"><Badge className={tones[row.outcome]}>{outcome(row.outcome)}</Badge>{!row.http.completed && <span className="mt-1 block text-xs text-muted-foreground">{t("Incomplete response", "استجابة غير مكتملة")}</span>}</td><td className="whitespace-nowrap px-5 py-4 font-mono">{number(row.http.durationMs)} ms</td><td className="px-5 py-4"><span dir="ltr" title={row.requestId} className="block max-w-36 truncate font-mono text-muted-foreground select-all">{row.requestId}</span></td></tr>)}</tbody></table></div>}
       <div className="flex flex-wrap items-center justify-between gap-3 border-t px-5 py-4"><p className="text-sm text-muted-foreground">{list.data ? `${number(list.data.items.length)} ${t("requests on this page", "طلب في هذه الصفحة")}` : "—"}</p><div className="flex gap-2"><Button variant="outline" disabled={cooldown > 0 || cursors.length === 1 || list.loading} onClick={() => setCursors(c => c.slice(0, -1))}>{t("Previous", "السابق")}</Button><Button variant="outline" disabled={cooldown > 0 || list.loading || !list.data?.pageInfo.hasNextPage || !list.data.pageInfo.nextCursor} onClick={() => { const cursor = list.data?.pageInfo.nextCursor; if (cursor) setCursors(c => [...c, cursor]); }}>{t("Next", "التالي")}</Button></div></div>
     </section>
     <Sheet open={!!selected} onOpenChange={open => { if (!open) setSelected(null); }}><SheetContent side={ar ? "left" : "right"} className="overflow-y-auto sm:max-w-xl" dir={ar ? "rtl" : "ltr"}><SheetHeader><SheetTitle>{t("Request details", "تفاصيل الطلب")}</SheetTitle><SheetDescription>{t("Sanitized server diagnostics", "بيانات تشخيصية آمنة من الخادم")}</SheetDescription></SheetHeader>{selected && <LogDetail key={selected} id={selected} ar={ar} errorBox={errorBox} refreshList={refresh} />}</SheetContent></Sheet>

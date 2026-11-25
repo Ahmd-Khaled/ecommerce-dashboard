@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useLocale } from "next-intl";
-import { LogOut, Menu, Globe, ShieldCheck } from "lucide-react";
+import { LogOut, Menu, Globe, Moon, ShieldCheck, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
 import { usePathname, useRouter } from "@/i18n/navigation";
 
 import { useAdminAuth } from "@/features/admin-auth/hooks/use-admin-auth";
@@ -12,6 +14,9 @@ type DashboardHeaderProps = {
 };
 
 export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
+  const [mounted, setMounted] = useState(false);
+  const { resolvedTheme, setTheme } = useTheme();
+  useEffect(() => setMounted(true), []);
   const locale = useLocale();
   const isArabic = locale === "ar";
   const pathname = usePathname();
@@ -52,6 +57,17 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
       </div>
 
       <div className="flex items-center gap-2 sm:gap-4">
+        <button
+          type="button"
+          onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+          className="flex size-9 items-center justify-center rounded-full border border-border text-foreground transition-colors hover:bg-muted"
+          aria-label={isArabic ? "تبديل المظهر" : "Toggle color theme"}
+          title={isArabic ? "تبديل المظهر" : "Toggle color theme"}
+          disabled={!mounted}
+        >
+          {mounted && resolvedTheme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
+        </button>
+
         <button
           type="button"
           onClick={() =>
