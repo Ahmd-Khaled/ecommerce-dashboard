@@ -13,7 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { apiErrorMessage } from "@/lib/api/axios";
+import { useApiErrorMessage } from "@/lib/api/use-api-error-message";
 
 import { usePaymentOrderDetails } from "../hooks/use-payments";
 import { PaymentStatusBadge } from "./payment-status-badge";
@@ -90,6 +90,7 @@ export function PaymentDetailsDialog({
   orderId,
   onClose,
 }: PaymentDetailsDialogProps) {
+  const apiErrorMessage = useApiErrorMessage();
   const locale = useLocale();
   const t = useTranslations("PaymentsManagement");
 

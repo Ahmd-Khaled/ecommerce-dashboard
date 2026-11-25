@@ -1,4 +1,7 @@
 {
+  "ApiError": {
+    "reference": "المرجع: {requestId}"
+  },
   "Home": {
     "dashboard": "لوحة التحكم",
     "overview": "نظرة عامة",

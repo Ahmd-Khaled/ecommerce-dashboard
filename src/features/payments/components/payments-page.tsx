@@ -30,7 +30,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { apiErrorMessage } from "@/lib/api/axios";
+import { useApiErrorMessage } from "@/lib/api/use-api-error-message";
 
 import { usePaymentOrders } from "../hooks/use-payments";
 import { PaymentStatusBadge } from "./payment-status-badge";
@@ -106,6 +106,7 @@ function SummaryCard({
 }
 
 export default function PaymentsPage() {
+  const apiErrorMessage = useApiErrorMessage();
   const locale = useLocale();
   const isArabic = locale === "ar";
   const t = useTranslations("PaymentsManagement");

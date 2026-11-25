@@ -2,6 +2,7 @@ import axios, {
   type AxiosError,
   type InternalAxiosRequestConfig,
 } from "axios";
+import { captureRequestId } from "./request-id";
 
 import {
   clearAdminAccessToken,
@@ -33,6 +34,16 @@ const refreshClient = axios.create({
     "Content-Type": "application/json",
   },
 });
+
+// Capture before auth handling, without modifying errors or reusable request configs.
+for (const client of [api, refreshClient]) {
+  client.interceptors.response.use(captureRequestId, (error: unknown) => {
+    if (axios.isAxiosError(error) && error.response) {
+      captureRequestId(error.response);
+    }
+    return Promise.reject(error);
+  });
+}
 
 type RefreshResponse = {
   success: boolean;

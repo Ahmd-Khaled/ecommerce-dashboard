@@ -1,4 +1,7 @@
 {
+  "ApiError": {
+    "reference": "Reference: {requestId}"
+  },
   "Home": {
     "dashboard": "Dashboard",
     "overview": "Overview",

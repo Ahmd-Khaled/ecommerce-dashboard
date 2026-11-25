@@ -12,7 +12,8 @@ export function AdminSessionGuard({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   const requiresSuperAdmin =
-    pathname === "/admins" || pathname.startsWith("/admins/");
+    pathname === "/admins" || pathname.startsWith("/admins/") ||
+    pathname === "/system-logs" || pathname.startsWith("/system-logs/");
 
   useEffect(() => {
     if (status === "unauthenticated") {

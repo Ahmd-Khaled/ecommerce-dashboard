@@ -1,6 +1,22 @@
 # Dashboard logging integration plan
 
-Status: proposed; documentation only. This plan is not authorization to implement it. Implementation starts only after the dashboard owner approves this plan.
+Status: implementation authorized by the dashboard owner on 2026-11-25. Phase A is implemented. A separate System Logs diagnostic viewer is now implemented; the durable audit viewer remains backend-gated.
+
+## System Logs delivery (2026-11-25)
+
+Reconciled with the published [dashboard integration guide](https://github.com/Ahmd-Khaled/ecommerce-backend/blob/main/docs/SYSTEM_LOGS_DASHBOARD_INTEGRATION.md) (blob `c9921104e1214c891aaf3c1bc700532b3a6bb6e3`). The guide now documents the statistics contract. Requests explicitly encode scalar query strings with `URLSearchParams`, omit unused values, and preserve zero. Malformed success envelopes show an unreadable-response error rather than an empty result. Shared in-memory rate-limit cooldowns honor readable `Retry-After` seconds/dates or fall back to 60 seconds, without automatic retries. Permission denial unmounts the workspace and cancels its requests. Latency metrics show “No data” for zero totals. The view includes a timezone label, successful table-load timestamp, ID copy controls, and a missing-detail state with list refresh. Numeric duration input rejects scientific notation, signs and decimals. Focused adapter tests cover serialization, envelope and cooldown behavior; authenticated browser acceptance remains outstanding.
+
+The dashboard now provides `/en/system-logs` and `/ar/system-logs`, with super-admin navigation and route protection, English/Arabic layouts, filters, server statistics, cursor pagination and a sanitized detail drawer. Backend authorization remains authoritative. Results live only in component memory, requests are cancelled on unmount, and identity changes remount the workspace. No log data or filter values are written to browser storage or the URL.
+
+Contract reviewed: `../ecommerce-backend/docs/SYSTEM_LOGS.md`, plus `src/Modules/system-log/{system-log.routes,system-log.validation,system-log.service,system-log.dto}.ts` and `src/DB/repository/system-log.repository.ts` in the local backend checkout. Rechecked GitHub main after the owner pushed updates on 2026-11-25: System Logs docs and implementation are now published. The remote routes, validation, service, repository, DTO and controller match the dashboard integration. Deployment must include and enable this System Logs implementation before the dashboard can load data.
+
+The published backend source additionally exposes `GET /api/v1/admin/system-logs/statistics`, which is not yet covered in `SYSTEM_LOGS.md`. Statistics accept only `from`, `to`, `method`, `route` and `slowThresholdMs`; the dashboard uses 1000 ms. Cards show total/successful/unsuccessful requests and approximate P95 latency, with average, maximum, P50/P99, slow, 4xx/5xx, denied and aborted counts. Their scope is explicitly separate from list-only request ID, status, outcome and minimum-duration filters. Both requests share resolved UTC boundaries. Relative ranges refresh on manual refresh; cursor navigation preserves the original filters and boundaries.
+
+All documented list filters are supported, with 25/50/100 row bounds. Status code and status group share one mutually exclusive input. Dates are entered in local time and sent as ISO UTC; server retention validation remains authoritative. Error states distinguish invalid/expired cursors, missing records, permission/session errors, rate limits, unavailable storage and transport failure. Missing statistics are never represented as zero. This is best-effort diagnostic storage, not a durable audit trail.
+
+Verification: `node scripts/test-system-logs.cjs` checks API envelopes, cursor/filter preservation, statistics filter isolation, detail paths, cancellation, no-store request headers and error propagation. `node scripts/test-request-id.cjs` checks existing request-ID behavior. Live authenticated browser/staging verification, backend enablement, response no-store headers and deployment configuration remain release checks. No backend files were modified by this dashboard implementation.
+
+The remaining sections preserve the original durable-audit plan and its prerequisites; proposed audit endpoints are not called by System Logs.
 
 Prepared on 2026-11-25 against the dashboard's current API/auth/navigation patterns and the backend logging documents linked below.
 
@@ -39,6 +55,10 @@ Current backend behavior and constraints described by those documents:
 - Admin management is currently the super-admin-only route. The audit page must have a matching client route guard and hidden navigation for ordinary admins, while the backend remains the actual authorization boundary.
 
 ## 4. Phase A — request ID correlation
+
+Implementation note (2026-11-25): Phase A is implemented in the shared Axios clients and existing centralized error-message consumers. `getRequestId` reads a response or Axios error; IDs are captured per response, never on reusable request configs. English/Arabic references appear in auth, order/review mutation errors, and payment query error states. No existing clipboard UI pattern was found, so references use selectable text.
+
+Deployment verification remains outstanding: the dashboard currently proxies `/api/v1` through a same-origin Next.js rewrite. Verify that this proxy preserves `X-Request-Id`; any direct cross-origin deployment must expose it with `Access-Control-Expose-Headers` for every dashboard origin. Staging must still exercise successful/error responses, expired-session retries, absent headers, and network failures. Local adapter checks are available via `node scripts/test-request-id.cjs` and do not establish deployed backend/CORS behavior.
 
 ### Implementation steps
 

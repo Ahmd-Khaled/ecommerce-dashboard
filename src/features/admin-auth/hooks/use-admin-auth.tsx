@@ -12,7 +12,7 @@ import {
 } from "react";
 
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { apiErrorMessage } from "@/lib/api/axios";
+import { useApiErrorMessage } from "@/lib/api/use-api-error-message";
 import { setAdminSessionBootstrapInProgress } from "@/lib/api/axios";
 import {
   clearAdminAccessToken,
@@ -48,6 +48,7 @@ interface AdminAuthContextValue {
 const AdminAuthContext = createContext<AdminAuthContextValue | null>(null);
 
 export function AdminAuthProvider({ children }: { children: ReactNode }) {
+  const apiErrorMessage = useApiErrorMessage();
   const router = useRouter();
   const pathname = usePathname();
   const initialPathname = useRef(pathname);
@@ -89,7 +90,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
         throw new Error(message);
       }
     },
-    [router],
+    [router, apiErrorMessage],
   );
 
   const logout = useCallback(async () => {

@@ -9,7 +9,7 @@ import {
 
 import { toast } from "sonner";
 
-import { apiErrorMessage } from "@/lib/api/axios";
+import { useApiErrorMessage } from "@/lib/api/use-api-error-message";
 
 import { ordersApi } from "../api/orders.api";
 
@@ -52,6 +52,7 @@ export function useOrderDetails(
 }
 
 export function useUpdateOrderStatus() {
+  const apiErrorMessage = useApiErrorMessage();
   const queryClient = useQueryClient();
 
   return useMutation({

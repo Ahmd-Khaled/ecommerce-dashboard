@@ -17,6 +17,7 @@ import {
   ImageIcon,
   PanelsTopLeft,
   Star,
+  Activity,
 } from "lucide-react";
 
 import { useAdminAuth } from "@/features/admin-auth/hooks/use-admin-auth";
@@ -44,6 +45,12 @@ export function DashboardSidebar({ className, onNavigate, onCollapsedChange }: D
   const { admin } = useAdminAuth();
 
   const navigation: NavigationItem[] = [
+    {
+      label: isArabic ? "سجلات النظام" : "System Logs",
+      href: `/${locale}/system-logs`,
+      icon: Activity,
+      superAdminOnly: true,
+    },
     {
       label: isArabic ? "لوحة التحكم" : "Dashboard",
       href: `/${locale}`,
