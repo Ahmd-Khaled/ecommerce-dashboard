@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:system-logs": "node scripts/test-system-logs.cjs && node scripts/test-request-id.cjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^7.0.5",

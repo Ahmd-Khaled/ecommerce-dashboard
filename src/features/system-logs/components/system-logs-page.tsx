@@ -11,6 +11,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { useAdminAuth } from "@/features/admin-auth/hooks/use-admin-auth";
 import { getRequestId } from "@/lib/api/request-id";
 import { getLogCooldown, systemLogsApi } from "../api/system-logs.api";
+import { logFiltersSchema } from "../schemas/system-log.schema";
 import type { LogFilters, LogPage, LogStatistics, SystemLog } from "../types/system-log.types";
 
 // Component-local results are discarded on identity change, permission loss and unmount.
@@ -34,20 +35,22 @@ function LogSession() {
 
 type Result<T> = { data?: T; error?: unknown; loading: boolean; updatedAt?: string };
 function useRead<T>(read: (signal: AbortSignal) => Promise<T>, dependencies: unknown[]): Result<T> {
-  const [result, setResult] = useState<Result<T>>({ loading: true });
+  const requestKey = JSON.stringify(dependencies);
+  const [result, setResult] = useState<Result<T> & { requestKey?: string }>({ loading: true });
   useEffect(() => {
     const controller = new AbortController();
-    setResult({ loading: true });
     read(controller.signal).then(data => {
-      if (!controller.signal.aborted) setResult({ data, loading: false, updatedAt: new Date().toISOString() });
+      if (!controller.signal.aborted) setResult({ data, loading: false, updatedAt: new Date().toISOString(), requestKey });
     }).catch(error => {
-      if (!controller.signal.aborted) setResult({ error, loading: false });
+      if (!controller.signal.aborted) setResult({ error, loading: false, requestKey });
     });
     return () => controller.abort();
     // Callers explicitly provide the complete request identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, dependencies);
-  return result;
+  }, [requestKey]);
+  // Never render a previous page's rows/cursor under a new request identity,
+  // including the render before the effect clears its state.
+  return result.requestKey === requestKey ? result : { loading: true };
 }
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return <label className="flex min-w-0 flex-col gap-2 text-sm font-medium">{label}{children}</label>;
@@ -83,7 +86,7 @@ function LogWorkspace() {
   }, []);
   const after = cursors.at(-1);
   const list = useRead<LogPage>(signal => systemLogsApi.list(filters, after, signal), [filters, after, revision]);
-  const stats = useRead<LogStatistics>(signal => systemLogsApi.statistics(filters, signal), [filters, revision]);
+  const stats = useRead<LogStatistics>(signal => systemLogsApi.statistics(filters, signal), [filters.from, filters.to, filters.method, filters.route, revision]);
   const set = (key: string, value: string) => setDraft(old => ({ ...old, [key]: value }));
   const number = (n: number) => new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(n);
   const date = (value: string) => new Date(value).toLocaleString(locale);
@@ -112,6 +115,9 @@ function LogWorkspace() {
     if (d.status) { if (d.status.endsWith("xx")) next.statusGroup = d.status; else next.statusCode = d.status; }
     if (next.requestId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(next.requestId)) {
       setValidation(t("Request ID must be a UUID.", "يجب أن يكون معرّف الطلب UUID.")); return;
+    }
+    if (!logFiltersSchema.safeParse(next).success) {
+      setValidation(t("Check the request UUID, route length, and numeric filter limits.", "تحقق من معرّف الطلب وطول المسار وحدود عوامل التصفية الرقمية.")); return;
     }
     setValidation(""); setCursors([undefined]); setSelected(null); setFilters(next); setAppliedRange(d.range);
     if (reset) setDraft(d);
