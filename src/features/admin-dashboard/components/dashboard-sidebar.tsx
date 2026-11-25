@@ -46,12 +46,6 @@ export function DashboardSidebar({ className, onNavigate, onCollapsedChange }: D
 
   const navigation: NavigationItem[] = [
     {
-      label: isArabic ? "سجلات النظام" : "System Logs",
-      href: `/${locale}/system-logs`,
-      icon: Activity,
-      superAdminOnly: true,
-    },
-    {
       label: isArabic ? "لوحة التحكم" : "Dashboard",
       href: `/${locale}`,
       icon: LayoutDashboard,
@@ -100,6 +94,12 @@ export function DashboardSidebar({ className, onNavigate, onCollapsedChange }: D
       label: isArabic ? "إدارة المسؤولين" : "Admin Management",
       href: `/${locale}/admins`,
       icon: ShieldCheck,
+      superAdminOnly: true,
+    },
+    {
+      label: isArabic ? "سجلات النظام" : "System Logs",
+      href: `/${locale}/system-logs`,
+      icon: Activity,
       superAdminOnly: true,
     },
   ];
